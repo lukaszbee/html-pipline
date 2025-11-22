@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         // Zmień na URL swojego repo
-        GIT_REPO = 'https://github.com/TWOJ_USERNAME/TWOJE_REPO.git'
+        GIT_REPO = 'https://github.com/lukaszbee/html-pipline.git'
         GIT_BRANCH = 'main'
     }
     
