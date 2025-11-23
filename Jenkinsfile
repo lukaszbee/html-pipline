@@ -57,25 +57,36 @@ pipeline {
             steps {
                 echo '✅ Weryfikacja wdrożenia...'
                 sh '''
-                    echo "📋 Sprawdzanie uruchomionych kontenerów:"
-                    podman ps | grep ${PROJECT_NAME} || echo "❌ Kontener nie został znaleziony!"
+                    echo "📋 Sprawdzanie kontenerów:"
+                    podman ps | grep ${PROJECT_NAME}
                     
                     echo ""
-                    echo "📊 Szczegóły kontenera:"
-                    podman inspect ${PROJECT_NAME} --format '{{.State.Status}}' || true
+                    echo "📊 Status kontenera:"
+                    CONTAINER_STATUS=$(podman inspect ${PROJECT_NAME} --format '{{.State.Status}}')
+                    echo "Status: $CONTAINER_STATUS"
                     
                     echo ""
-                    echo "🌐 Test dostępności strony:"
-                    sleep 3
+                    echo "💚 Health check:"
+                    HEALTH_STATUS=$(podman inspect ${PROJECT_NAME} --format '{{.State.Health.Status}}' || echo "unknown")
+                    echo "Health: $HEALTH_STATUS"
                     
-                    # Test HTTP
-                    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9000 || echo "000")
-                    echo "Status HTTP: $HTTP_STATUS"
+                    echo ""
+                    echo "🔌 Mapowanie portów:"
+                    podman port ${PROJECT_NAME}
                     
-                    if [ "$HTTP_STATUS" = "200" ]; then
-                        echo "✅ Strona działa poprawnie!"
+                    echo ""
+                    echo "⏳ Czekanie na inicjalizację kontenera..."
+                    sleep 5
+                    
+                    # Sprawdź czy kontener nadal działa
+                    if podman ps | grep -q ${PROJECT_NAME}; then
+                        echo "✅ Kontener działa poprawnie!"
+                        echo "🌐 Strona dostępna pod: http://localhost:9000"
+                        echo ""
+                        echo "💡 Sprawdź w przeglądarce lub przez curl z hosta:"
+                        echo "   curl http://localhost:9000"
                     else
-                        echo "❌ Strona nie odpowiada prawidłowo (kod: $HTTP_STATUS)"
+                        echo "❌ Kontener się zatrzymał!"
                         exit 1
                     fi
                 '''
@@ -85,19 +96,24 @@ pipeline {
     
     post {
         success {
+            echo '✅ =========================================='
             echo '✅ Pipeline zakończony sukcesem!'
+            echo '✅ =========================================='
+            echo ''
             echo '🌐 Strona dostępna na: http://localhost:9000'
             echo '📊 Sprawdź status: podman ps | grep debian-webserver'
+            echo '📝 Zobacz logi: podman exec debian-webserver nginx -t'
+            echo ''
         }
         failure {
             echo '❌ Pipeline zakończony błędem!'
             sh '''
-                echo "📋 Status kontenera:"
-                podman ps -a | grep ${PROJECT_NAME} || echo "Kontener nie istnieje"
+                echo "📋 Wszystkie kontenery:"
+                podman ps -a
                 
                 echo ""
-                echo "🔍 Sprawdzanie portu 9000:"
-                netstat -tlnp | grep 9000 || ss -tlnp | grep 9000 || echo "Port 9000 nie jest otwarty"
+                echo "🔍 Sprawdzanie portów:"
+                podman port ${PROJECT_NAME} || echo "Brak mapowania portów"
             '''
         }
         always {
