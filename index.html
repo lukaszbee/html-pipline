@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debian Webserver - Jenkins CI/CD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            margin: 10px 5px;
+            font-size: 0.9em;
+        }
+        
+        .info {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            text-align: left;
+        }
+        
+        .info-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+        }
+        
+        .info-item strong {
+            color: #667eea;
+        }
+        
+        .success-icon {
+            font-size: 4em;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h1>Deployment Successful!</h1>
+        <p style="color: #666; margin: 20px 0;">
+            Twój kontener Debian został pomyślnie wdrożony przez Jenkins Pipeline
+        </p>
+        
+        <div style="margin: 20px 0;">
+            <span class="badge">🐧 Debian 12</span>
+            <span class="badge">🔧 Jenkins CI/CD</span>
+            <span class="badge">📦 Podman</span>
+        </div>
+        
+        <div class="info">
+            <h3 style="color: #333; margin-bottom: 15px;">Informacje o deploymencie:</h3>
+            <div class="info-item">
+                <strong>System:</strong> Debian 12 (Bookworm)
+            </div>
+            <div class="info-item">
+                <strong>Webserver:</strong> Nginx
+            </div>
+            <div class="info-item">
+                <strong>Container:</strong> Podman + Podman Compose
+            </div>
+            <div class="info-item">
+                <strong>CI/CD:</strong> Jenkins Pipeline
+            </div>
+            <div class="info-item">
+                <strong>Port:</strong> 8090
+            </div>
+        </div>
+        
+        <p style="color: #999; font-size: 0.9em; margin-top: 30px;">
+            Automatycznie zbudowane i wdrożone przez Jenkins
+        </p>
+    </div>
+</body>
+</html>
