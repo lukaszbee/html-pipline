@@ -61,13 +61,23 @@ pipeline {
                     podman ps | grep ${PROJECT_NAME} || echo "❌ Kontener nie został znaleziony!"
                     
                     echo ""
-                    echo "📝 Logi kontenera:"
-                    podman logs ${PROJECT_NAME} --tail=20
+                    echo "📊 Szczegóły kontenera:"
+                    podman inspect ${PROJECT_NAME} --format '{{.State.Status}}' || true
                     
                     echo ""
                     echo "🌐 Test dostępności strony:"
-                    sleep 2
-                    curl -s -o /dev/null -w "Status HTTP: %{http_code}\\n" http://localhost:9000 || echo "❌ Nie można połączyć się ze stroną"
+                    sleep 3
+                    
+                    # Test HTTP
+                    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9000 || echo "000")
+                    echo "Status HTTP: $HTTP_STATUS"
+                    
+                    if [ "$HTTP_STATUS" = "200" ]; then
+                        echo "✅ Strona działa poprawnie!"
+                    else
+                        echo "❌ Strona nie odpowiada prawidłowo (kod: $HTTP_STATUS)"
+                        exit 1
+                    fi
                 '''
             }
         }
@@ -77,12 +87,17 @@ pipeline {
         success {
             echo '✅ Pipeline zakończony sukcesem!'
             echo '🌐 Strona dostępna na: http://localhost:9000'
+            echo '📊 Sprawdź status: podman ps | grep debian-webserver'
         }
         failure {
             echo '❌ Pipeline zakończony błędem!'
             sh '''
-                echo "📝 Ostatnie logi kontenera:"
-                podman logs ${PROJECT_NAME} --tail=50 || true
+                echo "📋 Status kontenera:"
+                podman ps -a | grep ${PROJECT_NAME} || echo "Kontener nie istnieje"
+                
+                echo ""
+                echo "🔍 Sprawdzanie portu 9000:"
+                netstat -tlnp | grep 9000 || ss -tlnp | grep 9000 || echo "Port 9000 nie jest otwarty"
             '''
         }
         always {
