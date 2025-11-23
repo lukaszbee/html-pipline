@@ -2,90 +2,91 @@ pipeline {
     agent any
     
     environment {
-        // Zmień na URL swojego repo
+        PROJECT_NAME = 'debian-webserver'
+        COMPOSE_FILE = 'podman-compose.yml'
         GIT_REPO = 'https://github.com/lukaszbee/html-pipline.git'
         GIT_BRANCH = 'main'
     }
     
     stages {
-        stage('Pobierz kod z GitHub') {
+        stage('Cleanup Workspace') {
             steps {
-                echo '📥 Pobieram pliki z GitHub...'
+                echo '🧹 Czyszczenie workspace...'
+                cleanWs()
+            }
+        }
+        
+        stage('Checkout') {
+            steps {
+                echo '📥 Pobieranie kodu z GitHub...'
+                echo "Repository: ${GIT_REPO}"
+                echo "Branch: ${GIT_BRANCH}"
                 git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
             }
         }
         
-        stage('Sprawdź Podman') {
+        stage('Stop Old Containers') {
             steps {
-                echo '🔍 Sprawdzam czy Podman działa...'
-                sh 'podman --version'
-                sh 'podman ps'
-            }
-        }
-        
-        stage('Zatrzymaj stare kontenery') {
-            steps {
-                echo '🛑 Zatrzymuję stare kontenery (jeśli istnieją)...'
+                echo '🛑 Zatrzymywanie starych kontenerów...'
                 sh '''
-                    podman stop web-kontener-1 web-kontener-2 web-kontener-3 || true
-                    podman rm web-kontener-1 web-kontener-2 web-kontener-3 || true
+                    podman-compose -f ${COMPOSE_FILE} down || true
+                    podman rm -f ${PROJECT_NAME} || true
                 '''
             }
         }
         
-        stage('Zbuduj obraz') {
+        stage('Build Image') {
             steps {
-                echo '🔨 Buduję obraz Docker...'
-                sh 'podman build -t moja-strona:v1 .'
-            }
-        }
-        
-        stage('Uruchom kontenery') {
-            steps {
-                echo '🚀 Uruchamiam 3 kontenery...'
+                echo '🔨 Budowanie obrazu Debian + Nginx...'
                 sh '''
-                    # Kontener 1
-                    podman run -d \
-                        --name web-kontener-1 \
-                        -p 8081:80 \
-                        -v $(pwd)/index1.html:/usr/share/nginx/html/index.html:ro \
-                        moja-strona:v1
-                    
-                    # Kontener 2
-                    podman run -d \
-                        --name web-kontener-2 \
-                        -p 8082:80 \
-                        -v $(pwd)/index2.html:/usr/share/nginx/html/index.html:ro \
-                        moja-strona:v1
-                    
-                    # Kontener 3
-                    podman run -d \
-                        --name web-kontener-3 \
-                        -p 8083:80 \
-                        -v $(pwd)/index3.html:/usr/share/nginx/html/index.html:ro \
-                        moja-strona:v1
+                    podman build -t ${PROJECT_NAME}:latest -f Dockerfile .
                 '''
             }
         }
         
-        stage('Sprawdź kontenery') {
+        stage('Deploy Container') {
             steps {
-                echo '✅ Sprawdzam uruchomione kontenery...'
-                sh 'podman ps | grep web-kontener'
+                echo '🚀 Uruchamianie kontenera...'
+                sh '''
+                    podman-compose -f ${COMPOSE_FILE} up -d
+                '''
+            }
+        }
+        
+        stage('Verify Deployment') {
+            steps {
+                echo '✅ Weryfikacja wdrożenia...'
+                sh '''
+                    echo "📋 Sprawdzanie uruchomionych kontenerów:"
+                    podman ps | grep ${PROJECT_NAME} || echo "❌ Kontener nie został znaleziony!"
+                    
+                    echo ""
+                    echo "📝 Logi kontenera:"
+                    podman logs ${PROJECT_NAME} --tail=20
+                    
+                    echo ""
+                    echo "🌐 Test dostępności strony:"
+                    sleep 2
+                    curl -s -o /dev/null -w "Status HTTP: %{http_code}\\n" http://localhost:9000 || echo "❌ Nie można połączyć się ze stroną"
+                '''
             }
         }
     }
     
     post {
         success {
-            echo '🎉 Pipeline zakończony sukcesem!'
-            echo 'Strony dostępne na:'
-            echo '  - http://localhost:8081 (Strona 1)'
-            echo '  - http://localhost:8082 (Strona 2)'
-            echo '  - http://localhost:8083 (Strona 3)'
+            echo '✅ Pipeline zakończony sukcesem!'
+            echo '🌐 Strona dostępna na: http://localhost:9000'
         }
         failure {
             echo '❌ Pipeline zakończony błędem!'
+            sh '''
+                echo "📝 Ostatnie logi kontenera:"
+                podman logs ${PROJECT_NAME} --tail=50 || true
+            '''
+        }
+        always {
+            echo '🧹 Sprzątanie zakończone'
         }
     }
 }
